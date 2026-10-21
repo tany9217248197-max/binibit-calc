@@ -67,11 +67,11 @@
     };
 
     // ====== СОСТОЯНИЕ ЛИЧНЫХ СТЕЙКОВ ======
-    // По умолчанию: один на 30 дней ($300), другой на 360 дней ($1000)
-    // Как просила Лида — у неё два разных стейка
+    // По умолчанию: один на 30 дней (≈ $300), другой на 360 дней (≈ $1000)
+    // при цене BINI $0.12 → $300 = 2500 BINI, $1000 = 8333 BINI
     let stakes = [
-        { amount: 300,  package: 30 },
-        { amount: 1000, package: 360 }
+        { amount: 2500, package: 30 },
+        { amount: 8300, package: 360 }
     ];
 
     // ====== ФУНКЦИИ ФОРМАТИРОВАНИЯ ======
@@ -106,8 +106,8 @@
             row.className = 'stake-row';
             row.innerHTML = `
                 <div class="stake-row__field">
-                    <label>Сумма, USDT</label>
-                    <input type="number" min="10" step="10" value="${s.amount}" data-stake-idx="${idx}" data-stake-field="amount">
+                    <label>Сумма, BINI</label>
+                    <input type="number" min="1" step="10" value="${s.amount}" data-stake-idx="${idx}" data-stake-field="amount">
                 </div>
                 <div class="stake-row__field">
                     <label>Пакет</label>
@@ -192,24 +192,24 @@
     function render() {
         const price = parseFloat(biniPrice.value) || 0.12;
         const refCount = parseInt(referralCount.value) || 0;
-        const refStakeUsdt = parseFloat(referralStake.value) || 0;
+        const refStakeBini = parseFloat(referralStake.value) || 0;
         const rankIdx = parseInt(rankSelect.value) || 0;
         const rank = RANKS[rankIdx];
 
-        // Сумма личных стейков
-        const totalStakeUsdt = stakes.reduce((sum, s) => sum + (s.amount || 0), 0);
+        // Сумма личных стейков в BINI
+        const totalStakeBini = stakes.reduce((sum, s) => sum + (s.amount || 0), 0);
 
         // Период для отображения — берём максимальный из стейков (для периода отображения дохода)
         // Но считаем каждый стейк отдельно со своим периодом
         const maxLockDays = Math.max(...stakes.map(s => PACKAGES[s.package].lockDays));
         periodLabel.textContent = `за ${maxLockDays} дней (макс. пакет)`;
 
-        // === Стейкинг — считаем каждый стейк отдельно ===
+        // === Стейкинг — считаем каждый стейк отдельно, в BINI ===
         const apy = STAKING_APY;
-        let totalDaily = 0;
-        let totalPeriodReward = 0;
-        let totalBonus = 0;
-        let totalSpot = 0;
+        let totalDailyBini = 0;
+        let totalPeriodBini = 0;
+        let totalBonusBini = 0;
+        let totalSpotBini = 0;
 
         // Для split-bar берём средневзвешенный split
         let weightedBonus = 0;
@@ -218,12 +218,12 @@
 
         stakes.forEach(s => {
             const pkg = PACKAGES[s.package];
-            const daily = calcDailyReward(s.amount, apy);
-            const period = daily * pkg.lockDays;
-            totalDaily += daily;
-            totalPeriodReward += period;
-            totalBonus += period * pkg.bonus;
-            totalSpot += period * pkg.spot;
+            const daily = calcDailyReward(s.amount, apy);  // в BINI
+            const period = daily * pkg.lockDays;            // в BINI
+            totalDailyBini += daily;
+            totalPeriodBini += period;
+            totalBonusBini += period * pkg.bonus;
+            totalSpotBini += period * pkg.spot;
             weightedBonus += pkg.bonus * s.amount;
             weightedSpot += pkg.spot * s.amount;
             totalStakeForWeight += s.amount;
@@ -232,14 +232,24 @@
         const avgBonus = totalStakeForWeight > 0 ? weightedBonus / totalStakeForWeight : 0.25;
         const avgSpot = totalStakeForWeight > 0 ? weightedSpot / totalStakeForWeight : 0.75;
 
+        // ВАЛИДАЦИЯ мин. стейка в USDT-эквиваленте
+        // Проверяем, что сумма × цена ≥ мин. порога пакета (10 USDT)
+        const minUsdt = 10;
+        let minStakeOk = true;
+        stakes.forEach(s => {
+            const stakeUsdt = s.amount * price;
+            if (stakeUsdt < minUsdt) minStakeOk = false;
+        });
+
         out.apyEffective.textContent = formatApy(apy);
         out.apyBase.textContent = `фиксированный APY · ${rank.code}`;
-        out.stakingPeriod.textContent = `${formatUsd(totalPeriodReward)}`;
-        out.stakingPeriodUsd.textContent = `${formatNumber(totalPeriodReward / price, 1)} BINI`;
-        out.stakingDaily.textContent = `${formatUsd(totalDaily)}`;
-        out.stakingDailyUsd.textContent = `${formatNumber(totalDaily / price, 2)} BINI/день`;
-        out.splitBonus.textContent = `${formatUsd(totalBonus)}`;
-        out.splitSpot.textContent = `${formatUsd(totalSpot)}`;
+        // Основная сумма — BINI, USD-эквивалент — под ней
+        out.stakingPeriod.textContent = `${formatNumber(totalPeriodBini, 1)} BINI`;
+        out.stakingPeriodUsd.textContent = `≈ ${formatUsd(totalPeriodBini * price)}`;
+        out.stakingDaily.textContent = `${formatNumber(totalDailyBini, 2)} BINI`;
+        out.stakingDailyUsd.textContent = `≈ ${formatUsd(totalDailyBini * price)} / день`;
+        out.splitBonus.textContent = `${formatNumber(totalBonusBini, 1)} BINI`;
+        out.splitSpot.textContent = `${formatNumber(totalSpotBini, 1)} BINI`;
 
         // Ширина сплит-бара — средневзвешенная
         document.querySelector('.split-bar__item--bonus').style.width = (avgBonus * 100) + '%';
@@ -249,18 +259,18 @@
         if (bonusLabel) bonusLabel.textContent = `Bonus ${(avgBonus * 100).toFixed(0)}%`;
         if (spotLabel) spotLabel.textContent = `Spot ${(avgSpot * 100).toFixed(0)}%`;
 
-        // === Рефералы ===
+        // === Рефералы — считаем в BINI ===
         const tree = calcReferralTree(refCount, rank.depth);
-        const clientDaily = calcDailyReward(refStakeUsdt, apy);
+        const clientDailyBini = calcDailyReward(refStakeBini, apy);
         // Период для расчёта реферальных берем максимальный — клиент стейкает на максимальный пакет
-        const refPeriod = clientDaily * maxLockDays;
+        const refPeriodBini = clientDailyBini * maxLockDays;
 
-        let totalRefIncome = 0;
+        let totalRefIncomeBini = 0;
         const breakdown = tree.map((node, i) => {
             const rate = rank.rates[i] || 0;
-            const perClient = refPeriod * rate;
+            const perClient = refPeriodBini * rate;
             const levelTotal = node.count * perClient;
-            totalRefIncome += levelTotal;
+            totalRefIncomeBini += levelTotal;
             return {
                 level: node.level,
                 count: node.count,
@@ -270,8 +280,8 @@
             };
         });
 
-        out.refTotal.textContent = `${formatUsd(totalRefIncome)}`;
-        out.refTotalUsd.textContent = `${formatNumber(totalRefIncome / price, 1)} BINI`;
+        out.refTotal.textContent = `${formatNumber(totalRefIncomeBini, 1)} BINI`;
+        out.refTotalUsd.textContent = `≈ ${formatUsd(totalRefIncomeBini * price)}`;
 
         out.refLevels.innerHTML = '';
         breakdown.forEach((lvl) => {
@@ -282,20 +292,20 @@
                 <span class="ref-level__label">L${lvl.level}</span>
                 <span class="ref-level__rate">${ratePct}% · линия ${lvl.level}</span>
                 <span class="ref-level__count">${formatNumber(lvl.count)} чел.</span>
-                <span class="ref-level__value">${formatUsd(lvl.total)}</span>
+                <span class="ref-level__value">${formatNumber(lvl.total, 1)} BINI</span>
             `;
             out.refLevels.appendChild(div);
         });
 
         // === Итог ===
-        const grandTotal = totalPeriodReward + totalRefIncome;
-        const grandBini = grandTotal / price;
-        const roi = totalStakeUsdt > 0 ? (grandTotal / totalStakeUsdt * 100) : 0;
+        const grandTotalBini = totalPeriodBini + totalRefIncomeBini;
+        const grandUsd = grandTotalBini * price;
+        const roi = totalStakeBini > 0 ? (grandTotalBini / totalStakeBini * 100) : 0;
 
-        out.grandTotal.textContent = `${formatUsd(grandTotal)}`;
-        out.grandTotalUsd.textContent = `${formatNumber(grandBini, 1)} BINI`;
-        out.brStaking.textContent = `${formatUsd(totalPeriodReward)}`;
-        out.brReferral.textContent = `${formatUsd(totalRefIncome)}`;
+        out.grandTotal.textContent = `${formatNumber(grandTotalBini, 1)} BINI`;
+        out.grandTotalUsd.textContent = `≈ ${formatUsd(grandUsd)}`;
+        out.brStaking.textContent = `${formatNumber(totalPeriodBini, 1)} BINI`;
+        out.brReferral.textContent = `${formatNumber(totalRefIncomeBini, 1)} BINI`;
         out.brRoi.textContent = `ROI ${formatNumber(roi, 0)}%`;
 
         clearStale();
@@ -303,7 +313,8 @@
 
     // ====== СОБЫТИЯ ======
     btnAddStake.addEventListener('click', () => {
-        stakes.push({ amount: 100, package: 180 });
+        // Дефолт для нового стейка — в BINI (~$100 при цене $0.12)
+        stakes.push({ amount: 830, package: 180 });
         renderStakes();
         markStale();
     });

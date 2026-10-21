@@ -57,14 +57,14 @@
                 <div class="field">
                     <label for="rank-select">Ваш ранг партнёрской программы</label>
                     <select id="rank-select">
-                        <option value="0">CADET (от 50 USDT) · L1</option>
-                        <option value="1">CO-PILOT (от 100 USDT) · L1-L2</option>
-                        <option value="2" selected>CAPTAIN (от 300 USDT) · L1-L3</option>
-                        <option value="3">SUPERSONIC (от 1 000 USDT) · L1-L4</option>
-                        <option value="4">SQUADRON (от 2 500 USDT) · L1-L5</option>
-                        <option value="5">MARSHAL (от 5 000 USDT) · L1-L6</option>
-                        <option value="6">STRATOSPHERE (от 10 000 USDT) · L1-L7</option>
-                        <option value="7">TOPGUN (от 20 000 USDT) · L1-L8</option>
+                        <option value="0">CADET (от 50 USDT экв.) · L1</option>
+                        <option value="1">CO-PILOT (от 100 USDT экв.) · L1-L2</option>
+                        <option value="2" selected>CAPTAIN (от 300 USDT экв.) · L1-L3</option>
+                        <option value="3">SUPERSONIC (от 1 000 USDT экв.) · L1-L4</option>
+                        <option value="4">SQUADRON (от 2 500 USDT экв.) · L1-L5</option>
+                        <option value="5">MARSHAL (от 5 000 USDT экв.) · L1-L6</option>
+                        <option value="6">STRATOSPHERE (от 10 000 USDT экв.) · L1-L7</option>
+                        <option value="7">TOPGUN (от 20 000 USDT экв.) · L1-L8</option>
                     </select>
                 </div>
 
@@ -74,8 +74,8 @@
                 </div>
 
                 <div class="field">
-                    <label>Средний стейк одного реферала, USDT</label>
-                    <input type="number" id="referral-stake" min="0" step="50" value="500">
+                    <label>Средний стейк одного реферала, BINI</label>
+                    <input type="number" id="referral-stake" min="0" step="100" value="4150">
                 </div>
 
                 <button type="button" id="btn-recalc" class="btn-recalc">
@@ -178,7 +178,7 @@
                             <th>Пакет</th>
                             <th>Название</th>
                             <th>Срок</th>
-                            <th>Мин. стейк</th>
+                            <th>Мин. стейк, USDT экв.</th>
                             <th>APY</th>
                             <th>Bonus</th>
                             <th>Spot</th>
@@ -190,7 +190,7 @@
                             <td><span class="tier-pill tier-pill--30">P1</span></td>
                             <td>Стартовый</td>
                             <td>30 дней</td>
-                            <td>10 USDT</td>
+                            <td>10</td>
                             <td>120%</td>
                             <td>55%</td>
                             <td>45%</td>
@@ -200,7 +200,7 @@
                             <td><span class="tier-pill tier-pill--90">P2</span></td>
                             <td>Рост</td>
                             <td>90 дней</td>
-                            <td>10 USDT</td>
+                            <td>10</td>
                             <td>120%</td>
                             <td>35%</td>
                             <td>65%</td>
@@ -210,7 +210,7 @@
                             <td><span class="tier-pill tier-pill--180">P3</span></td>
                             <td>Pro</td>
                             <td>180 дней</td>
-                            <td>10 USDT</td>
+                            <td>10</td>
                             <td>120%</td>
                             <td>25%</td>
                             <td>75%</td>
@@ -220,7 +220,7 @@
                             <td><span class="tier-pill tier-pill--360">P4</span></td>
                             <td>Elit</td>
                             <td>360 дней</td>
-                            <td>10 USDT</td>
+                            <td>10</td>
                             <td>120%</td>
                             <td>15%</td>
                             <td>85%</td>
@@ -241,7 +241,7 @@
                     <thead>
                         <tr>
                             <th>Ранг</th>
-                            <th>Личный стейк от</th>
+                            <th>Личный стейк от, USDT экв.</th>
                             <th>Глубина</th>
                             <th>L1</th>
                             <th>L2</th>
@@ -254,14 +254,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>CADET</td><td>50 USDT</td><td>1</td><td>8%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-                        <tr><td>CO-PILOT</td><td>100 USDT</td><td>2</td><td>9%</td><td>7%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-                        <tr class="row-highlight"><td>CAPTAIN</td><td>300 USDT</td><td>3</td><td>10%</td><td>7%</td><td>3%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-                        <tr><td>SUPERSONIC</td><td>1 000 USDT</td><td>4</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-                        <tr><td>SQUADRON</td><td>2 500 USDT</td><td>5</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>—</td><td>—</td><td>—</td></tr>
-                        <tr><td>MARSHAL</td><td>5 000 USDT</td><td>6</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>—</td><td>—</td></tr>
-                        <tr><td>STRATOSPHERE</td><td>10 000 USDT</td><td>7</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>1.5%</td><td>—</td></tr>
-                        <tr><td>TOPGUN</td><td>20 000 USDT</td><td>8</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>1.5%</td><td>1.5%</td></tr>
+                        <tr><td>CADET</td><td>50</td><td>1</td><td>8%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr><td>CO-PILOT</td><td>100</td><td>2</td><td>9%</td><td>7%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr class="row-highlight"><td>CAPTAIN</td><td>300</td><td>3</td><td>10%</td><td>7%</td><td>3%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr><td>SUPERSONIC</td><td>1 000</td><td>4</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr><td>SQUADRON</td><td>2 500</td><td>5</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr><td>MARSHAL</td><td>5 000</td><td>6</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>—</td><td>—</td></tr>
+                        <tr><td>STRATOSPHERE</td><td>10 000</td><td>7</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>1.5%</td><td>—</td></tr>
+                        <tr><td>TOPGUN</td><td>20 000</td><td>8</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>1.5%</td><td>1.5%</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -278,17 +278,17 @@
                         <tr>
                             <th>Пул</th>
                             <th>Доля от прибыли</th>
-                            <th>Командный объём от</th>
+                            <th>Командный объём от, USD</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>Пул 1</td><td>10%</td><td>10 000 USD</td></tr>
-                        <tr><td>Пул 2</td><td>8%</td><td>30 000 USD</td></tr>
-                        <tr><td>Пул 3</td><td>6%</td><td>100 000 USD</td></tr>
-                        <tr><td>Пул 4</td><td>4%</td><td>300 000 USD</td></tr>
-                        <tr><td>Пул 5</td><td>3%</td><td>1 000 000 USD</td></tr>
-                        <tr><td>Пул 6</td><td>2%</td><td>3 000 000 USD</td></tr>
-                        <tr><td>Пул 7</td><td>2%</td><td>10 000 000 USD</td></tr>
+                        <tr><td>Пул 1</td><td>10%</td><td>10 000</td></tr>
+                        <tr><td>Пул 2</td><td>8%</td><td>30 000</td></tr>
+                        <tr><td>Пул 3</td><td>6%</td><td>100 000</td></tr>
+                        <tr><td>Пул 4</td><td>4%</td><td>300 000</td></tr>
+                        <tr><td>Пул 5</td><td>3%</td><td>1 000 000</td></tr>
+                        <tr><td>Пул 6</td><td>2%</td><td>3 000 000</td></tr>
+                        <tr><td>Пул 7</td><td>2%</td><td>10 000 000</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -304,7 +304,7 @@
                     <p>Если вы впервые услышали о BiNiBit — смело нажимайте кнопку ниже. Это ваш вход в биржу, стейкинг и партнерскую программу. ИИ-помощник проведет вас за руку: вход, партнёрский код <em>BiNi-XXXX</em>, активация стейкинга — за 2 минуты.</p>
                     <ul class="cta__list">
                         <li>Регистрация занимает 2 минуты</li>
-                        <li>Минимальный стейк — 10 USDT</li>
+                        <li>Минимальный стейк — от 10 USDT экв.</li>
                         <li>Партнёрская программа активируется сразу</li>
                     </ul>
 
