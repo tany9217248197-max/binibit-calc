@@ -1,0 +1,28 @@
+# Node
+node_modules/
+package-lock.json
+yarn.lock
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local env (если когда-нибудь понадобится)
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Временные бэкапы
+*.bak
+*.tmp
