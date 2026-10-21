@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Калькулятор доходности BiNiBit — стейкинг и реферальный доход</title>
-    <meta name="description" content="Рассчитайте доход от стейкинга BINI и реферальной сети BiNiBit по официальным параметрам Whitepaper v1.0. Тиры 30/90/180/360 дней, 5 уровней рефералов до 70%.">
+    <meta name="description" content="Рассчитайте доход от стейкинга BINI и партнёрской программы BiNiBit. 4 пакета стейкинга, APY 120%, 8 рангов, до 30% по цепочке L1-L8.">
     <meta property="og:title" content="Калькулятор доходности BiNiBit">
-    <meta property="og:description" content="Стейкинг BINI: 4 тира, APY до 851%. Реферальная сеть: 5 уровней, до 70% комиссий.">
+    <meta property="og:description" content="Стейкинг BINI: 4 пакета, APY 120%. Партнёрская программа: 8 рангов, до 30% по цепочке L1-L8.">
     <meta property="og:type" content="website">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="styles.css">
@@ -14,6 +14,7 @@
 <body>
     <div class="bg-glow bg-glow--1"></div>
     <div class="bg-glow bg-glow--2"></div>
+    <div class="bg-glow bg-glow--3"></div>
 
     <header class="header">
         <div class="header__logo">
@@ -21,15 +22,15 @@
             <span class="logo-text">BiNiBit <em>Calculator</em></span>
         </div>
         <div class="header__badges">
-            <span class="badge badge--verified">Whitepaper v1.0</span>
-            <span class="badge">On-chain settlements</span>
+            <span class="badge badge--verified">APY 120%</span>
+            <span class="badge">8 уровней L1–L8</span>
         </div>
     </header>
 
     <main class="main">
         <section class="hero">
             <h1>Калькулятор доходности <span class="text-gradient">BiNiBit</span></h1>
-            <p class="hero__subtitle">Рассчитайте пассивный доход от стейкинга <strong>BINI</strong> и комиссионные с реферальной сети из 5 уровней. Все параметры — из официального Whitepaper v1.0 (март 2026).</p>
+            <p class="hero__subtitle">Рассчитайте пассивный доход от стейкинга <strong>BINI</strong> и партнёрские вознаграждения по 8-уровневой реферальной сети. Все параметры — из официальных условий <strong>binibit.com/ru/earn/affiliate</strong>.</p>
         </section>
 
         <section class="calc-grid">
@@ -39,50 +40,32 @@
                     <h2>Ваши параметры</h2>
                 </div>
 
-                <div class="field">
-                    <label for="stake-amount">Сумма стейкинга, BINI</label>
-                    <input type="number" id="stake-amount" min="1250" step="100" value="25000" required>
-                    <span class="field__hint" id="stake-hint"></span>
-                </div>
-
-                <div class="field">
-                    <label>Тир стейкинга (срок блокировки)</label>
-                    <div class="tier-selector" id="tier-selector">
-                        <button type="button" class="tier-btn" data-tier="30">
-                            <span class="tier-btn__title">30 дней</span>
-                            <span class="tier-btn__sub">от 1 250</span>
-                            <span class="tier-btn__mult">×0.75</span>
-                        </button>
-                        <button type="button" class="tier-btn" data-tier="90">
-                            <span class="tier-btn__title">90 дней</span>
-                            <span class="tier-btn__sub">от 7 500</span>
-                            <span class="tier-btn__mult">×1.0</span>
-                        </button>
-                        <button type="button" class="tier-btn tier-btn--active" data-tier="180">
-                            <span class="tier-btn__title">180 дней</span>
-                            <span class="tier-btn__sub">от 25 000</span>
-                            <span class="tier-btn__mult">×1.25</span>
-                        </button>
-                        <button type="button" class="tier-btn" data-tier="360">
-                            <span class="tier-btn__title">360 дней</span>
-                            <span class="tier-btn__sub">от 75 000</span>
-                            <span class="tier-btn__mult">×1.5</span>
-                        </button>
+                <!-- Личные стейки (можно несколько) -->
+                <div class="stakes-section">
+                    <div class="stakes-section__title">Личные стейки</div>
+                    <div id="stakes-container">
+                        <!-- Заполняется JS -->
                     </div>
-                </div>
-
-                <div class="field">
-                    <label for="total-staked">Общий объём стейкинга в сети, млн BINI</label>
-                    <input type="range" id="total-staked" min="10" max="200" step="5" value="50">
-                    <div class="range-display">
-                        <span id="total-staked-val">50</span> млн BINI
-                        <em id="total-staked-scenario" class="range-scenario">Умеренное вовлечение</em>
-                    </div>
+                    <button type="button" id="btn-add-stake" class="btn-add-stake">+ Добавить ещё стейк</button>
                 </div>
 
                 <div class="field">
                     <label for="bini-price">Цена BINI, USD</label>
-                    <input type="number" id="bini-price" min="0.001" step="0.01" value="0.10">
+                    <input type="number" id="bini-price" min="0.001" step="0.01" value="0.12">
+                </div>
+
+                <div class="field">
+                    <label for="rank-select">Ваш ранг партнёрской программы</label>
+                    <select id="rank-select">
+                        <option value="0">CADET (от 50 USDT) · L1</option>
+                        <option value="1">CO-PILOT (от 100 USDT) · L1-L2</option>
+                        <option value="2" selected>CAPTAIN (от 300 USDT) · L1-L3</option>
+                        <option value="3">SUPERSONIC (от 1 000 USDT) · L1-L4</option>
+                        <option value="4">SQUADRON (от 2 500 USDT) · L1-L5</option>
+                        <option value="5">MARSHAL (от 5 000 USDT) · L1-L6</option>
+                        <option value="6">STRATOSPHERE (от 10 000 USDT) · L1-L7</option>
+                        <option value="7">TOPGUN (от 20 000 USDT) · L1-L8</option>
+                    </select>
                 </div>
 
                 <div class="field">
@@ -91,20 +74,14 @@
                 </div>
 
                 <div class="field">
-                    <label>Средний стейк одного реферала, BINI</label>
-                    <input type="number" id="referral-stake" min="0" step="100" value="10000">
+                    <label>Средний стейк одного реферала, USDT</label>
+                    <input type="number" id="referral-stake" min="0" step="50" value="500">
                 </div>
 
-                <div class="field">
-                    <label>Статус франшизы</label>
-                    <select id="franchise-status">
-                        <option value="0">Member (регистрация)</option>
-                        <option value="1">Active (+1% на все уровни)</option>
-                        <option value="2">Leader (+2%)</option>
-                        <option value="3">Senior Leader (+3%)</option>
-                        <option value="4">Franchise Partner (custom)</option>
-                    </select>
-                </div>
+                <button type="button" id="btn-recalc" class="btn-recalc">
+                    <span class="btn-recalc__icon">⟳</span>
+                    <span>ПЕРЕСЧИТАТЬ</span>
+                </button>
             </div>
 
             <!-- ====== РЕЗУЛЬТАТ ====== -->
@@ -125,18 +102,18 @@
                     <div class="metric metric--hero">
                         <div class="metric__label">Эффективный APY</div>
                         <div class="metric__value text-gradient" id="apy-effective">—</div>
-                        <div class="metric__sub" id="apy-base">базовый —</div>
+                        <div class="metric__sub" id="apy-base">фиксированный —</div>
                     </div>
                     <div class="metric-row">
                         <div class="metric">
                             <div class="metric__label">Доход за период</div>
-                            <div class="metric__value" id="staking-period">— BINI</div>
-                            <div class="metric__sub" id="staking-period-usd">≈ — USD</div>
+                            <div class="metric__value" id="staking-period">—</div>
+                            <div class="metric__sub" id="staking-period-usd">≈ — BINI</div>
                         </div>
                         <div class="metric">
                             <div class="metric__label">Доход в день</div>
-                            <div class="metric__value" id="staking-daily">— BINI</div>
-                            <div class="metric__sub" id="staking-daily-usd">≈ — USD</div>
+                            <div class="metric__value" id="staking-daily">—</div>
+                            <div class="metric__sub" id="staking-daily-usd">≈ — BINI/день</div>
                         </div>
                     </div>
                     <div class="split-bar">
@@ -149,28 +126,28 @@
                             <em id="split-spot">—</em>
                         </div>
                     </div>
-                    <p class="result-note">Bonus — внутри экосистемы (лотерея, launchpad, premium). Spot — выводится и торгуется.</p>
+                    <p class="result-note">Bonus (оранжевый) — внутри экосистемы. Spot (зелёный) — выводится и торгуется. Пропорция зависит от пакета стейкинга.</p>
                 </div>
 
                 <!-- Рефералы -->
                 <div class="result-panel" id="panel-referral">
                     <div class="metric metric--hero">
                         <div class="metric__label">Доход с рефералов за период</div>
-                        <div class="metric__value text-gradient" id="ref-total">— BINI</div>
-                        <div class="metric__sub" id="ref-total-usd">≈ — USD</div>
+                        <div class="metric__value text-gradient" id="ref-total">—</div>
+                        <div class="metric__sub" id="ref-total-usd">≈ — BINI</div>
                     </div>
                     <div class="ref-levels" id="ref-levels">
                         <!-- генерируется JS -->
                     </div>
-                    <p class="result-note">Комиссии carved из стейкинг-эмиссии — не увеличивают общую эмиссию, перераспределяются между участниками сети.</p>
+                    <p class="result-note">Выплата партнёру = процент линии × доход клиента в этой линии. Клиент получает свой доход полностью — выплата не вычитается из него.</p>
                 </div>
 
                 <!-- Итог -->
                 <div class="result-panel" id="panel-total">
                     <div class="metric metric--hero">
                         <div class="metric__label">Общий доход за период</div>
-                        <div class="metric__value text-gradient" id="grand-total">— BINI</div>
-                        <div class="metric__sub" id="grand-total-usd">≈ — USD</div>
+                        <div class="metric__value text-gradient" id="grand-total">—</div>
+                        <div class="metric__sub" id="grand-total-usd">≈ — BINI</div>
                     </div>
                     <div class="breakdown-list">
                         <div class="breakdown-item">
@@ -178,7 +155,7 @@
                             <strong id="br-staking">—</strong>
                         </div>
                         <div class="breakdown-item">
-                            <span>Реферальная сеть (5 уровней)</span>
+                            <span>Реферальная сеть (L1–L8)</span>
                             <strong id="br-referral">—</strong>
                         </div>
                         <div class="breakdown-item breakdown-item--total">
@@ -190,18 +167,19 @@
             </div>
         </section>
 
-        <!-- ====== ТАБЛИЦА ТИРОВ ====== -->
+        <!-- ====== ТАБЛИЦА ПАКЕТОВ ====== -->
         <section class="card card--table">
-            <h2>Сравнение тиров стейкинга</h2>
-            <p class="card__intro">Чем дольше блокировка — тем выше множитель и больше ликвидной части (Spot).</p>
+            <h2>Пакеты стейкинга</h2>
+            <p class="card__intro">APY 120% для всех пакетов. Чем дольше блокировка — тем больше ликвидной части (Spot).</p>
             <div class="table-wrap">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Тир</th>
+                            <th>Пакет</th>
+                            <th>Название</th>
                             <th>Срок</th>
                             <th>Мин. стейк</th>
-                            <th>Множитель</th>
+                            <th>APY</th>
                             <th>Bonus</th>
                             <th>Spot</th>
                             <th>Штраф за ранний выход</th>
@@ -209,37 +187,41 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><span class="tier-pill tier-pill--30">T1</span></td>
+                            <td><span class="tier-pill tier-pill--30">P1</span></td>
+                            <td>Стартовый</td>
                             <td>30 дней</td>
-                            <td>1 250 BINI</td>
-                            <td>×0.75</td>
+                            <td>10 USDT</td>
+                            <td>120%</td>
                             <td>55%</td>
                             <td>45%</td>
                             <td>10% principal</td>
                         </tr>
                         <tr>
-                            <td><span class="tier-pill tier-pill--90">T2</span></td>
+                            <td><span class="tier-pill tier-pill--90">P2</span></td>
+                            <td>Рост</td>
                             <td>90 дней</td>
-                            <td>7 500 BINI</td>
-                            <td>×1.0</td>
+                            <td>10 USDT</td>
+                            <td>120%</td>
                             <td>35%</td>
                             <td>65%</td>
                             <td>15% principal</td>
                         </tr>
                         <tr class="row-highlight">
-                            <td><span class="tier-pill tier-pill--180">T3</span></td>
+                            <td><span class="tier-pill tier-pill--180">P3</span></td>
+                            <td>Pro</td>
                             <td>180 дней</td>
-                            <td>25 000 BINI</td>
-                            <td>×1.25</td>
+                            <td>10 USDT</td>
+                            <td>120%</td>
                             <td>25%</td>
                             <td>75%</td>
                             <td>20% principal</td>
                         </tr>
                         <tr>
-                            <td><span class="tier-pill tier-pill--360">T4</span></td>
+                            <td><span class="tier-pill tier-pill--360">P4</span></td>
+                            <td>Elit</td>
                             <td>360 дней</td>
-                            <td>75 000 BINI</td>
-                            <td>×1.5</td>
+                            <td>10 USDT</td>
+                            <td>120%</td>
                             <td>15%</td>
                             <td>85%</td>
                             <td>25% principal</td>
@@ -247,27 +229,100 @@
                     </tbody>
                 </table>
             </div>
-            <p class="table-source">Источник: BiNiBit Whitepaper v1.0, раздел 5.3 (март 2026).<br>APY не фиксирован — зависит от общего объёма стейкинга в сети.</p>
+            <p class="table-source">Источник: <a href="https://binibit.com/ru/staking" target="_blank" rel="noopener">binibit.com/ru/staking</a> (октябрь 2026). APY фиксирован и не зависит от объёма стейкинга в сети.</p>
+        </section>
+
+        <!-- ====== ТАБЛИЦА РАНГОВ ====== -->
+        <section class="card card--table">
+            <h2>Ранги партнёрской программы</h2>
+            <p class="card__intro">Личный стейк определяет глубину и ставки. Суммарно по цепочке L1–L8 — до 30% от дохода клиента.</p>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Ранг</th>
+                            <th>Личный стейк от</th>
+                            <th>Глубина</th>
+                            <th>L1</th>
+                            <th>L2</th>
+                            <th>L3</th>
+                            <th>L4</th>
+                            <th>L5</th>
+                            <th>L6</th>
+                            <th>L7</th>
+                            <th>L8</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>CADET</td><td>50 USDT</td><td>1</td><td>8%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr><td>CO-PILOT</td><td>100 USDT</td><td>2</td><td>9%</td><td>7%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr class="row-highlight"><td>CAPTAIN</td><td>300 USDT</td><td>3</td><td>10%</td><td>7%</td><td>3%</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr><td>SUPERSONIC</td><td>1 000 USDT</td><td>4</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr><td>SQUADRON</td><td>2 500 USDT</td><td>5</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>—</td><td>—</td><td>—</td></tr>
+                        <tr><td>MARSHAL</td><td>5 000 USDT</td><td>6</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>—</td><td>—</td></tr>
+                        <tr><td>STRATOSPHERE</td><td>10 000 USDT</td><td>7</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>1.5%</td><td>—</td></tr>
+                        <tr><td>TOPGUN</td><td>20 000 USDT</td><td>8</td><td>11%</td><td>7%</td><td>3%</td><td>2%</td><td>2%</td><td>2%</td><td>1.5%</td><td>1.5%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="table-source">Источник: <a href="https://binibit.com/ru/earn/affiliate" target="_blank" rel="noopener">binibit.com/ru/earn/affiliate</a> (октябрь 2026).</p>
+        </section>
+
+        <!-- ====== ЛИДЕРСКИЕ ПУЛЫ ====== -->
+        <section class="card card--table">
+            <h2>Лидерские пулы</h2>
+            <p class="card__intro">35% прибыли компании распределяется по 7 пулам. Квалификация — по командному объёму.</p>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Пул</th>
+                            <th>Доля от прибыли</th>
+                            <th>Командный объём от</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Пул 1</td><td>10%</td><td>10 000 USD</td></tr>
+                        <tr><td>Пул 2</td><td>8%</td><td>30 000 USD</td></tr>
+                        <tr><td>Пул 3</td><td>6%</td><td>100 000 USD</td></tr>
+                        <tr><td>Пул 4</td><td>4%</td><td>300 000 USD</td></tr>
+                        <tr><td>Пул 5</td><td>3%</td><td>1 000 000 USD</td></tr>
+                        <tr><td>Пул 6</td><td>2%</td><td>3 000 000 USD</td></tr>
+                        <tr><td>Пул 7</td><td>2%</td><td>10 000 000 USD</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="table-source">Каждый пул делится поровну между квалифицированными участниками. Крупнейшая ветка покрывает не более 50% объёма для квалификации.</p>
         </section>
 
         <!-- ====== CTA ====== -->
         <section class="cta">
             <div class="cta__inner">
                 <div class="cta__text">
+                    <span class="cta__eyebrow">Присоединиться к бирже BiNiBit</span>
                     <h2>Готовы начать?</h2>
-                    <p>Зарегистрируйтесь через бота <strong>@Binibit_Global_bot</strong> — получите персональный реферальный код <em>BiNi-XXXX</em> и доступ к стейкингу.</p>
+                    <p>Если вы впервые услышали о BiNiBit — смело нажимайте кнопку ниже. Это ваш вход в биржу, стейкинг и партнерскую программу. ИИ-помощник проведет вас за руку: вход, партнёрский код <em>BiNi-XXXX</em>, активация стейкинга — за 2 минуты.</p>
                     <ul class="cta__list">
                         <li>Регистрация занимает 2 минуты</li>
-                        <li>Минимальный стейк — 1 250 BINI (T1)</li>
-                        <li>Реферальная сеть активируется сразу</li>
+                        <li>Минимальный стейк — 10 USDT</li>
+                        <li>Партнёрская программа активируется сразу</li>
                     </ul>
+
+                    <div class="cta__warning">
+                        <div class="cta__warning-icon">⚠</div>
+                        <div class="cta__warning-text">
+                            <strong>Вы уже действующий партнёр BiNiBit?</strong>
+                            Тогда <em>пожалуйста, не нажимайте кнопку</em> — она запустит алгоритм партнёрской программы нашей команды и зарегистрирует вас под новым партнёром. Это нарушает этику вашей текущей команды и Правила BiNiBit. Просто пользуйтесь калькулятором, потом просто закройте эту страницу, всё у вас в порядке.
+                        </div>
+                    </div>
                 </div>
                 <div class="cta__action">
                     <a href="https://t.me/Binibit_Global_bot" class="btn-cta" target="_blank" rel="noopener">
                         <span class="btn-cta__icon">→</span>
                         <span class="btn-cta__text">Открыть @Binibit_Global_bot</span>
                     </a>
-                    <a href="https://docs.binibit.com" class="btn-docs" target="_blank" rel="noopener">Читать Whitepaper</a>
+                    <a href="https://binibit.com/ru/earn/affiliate" class="btn-docs" target="_blank" rel="noopener">Условия программы</a>
+                    <p class="cta__footnote">Кнопка перенаправит в Telegram и там ИИ-помощник ответит на ваши вопросы и поможет зарегистрироваться. Так же можно задать вопросы человеку. После подтверждения активного стейкинга ИИ-помощник автоматически добавит вашу партнёрскую ссылку в алгоритм распределения для следующих партнёров. Следуйте подсказкам ИИ-помощника.</p>
                 </div>
             </div>
         </section>
@@ -276,22 +331,22 @@
             <details>
                 <summary>Дисклеймер и методология расчёта</summary>
                 <div class="disclaimer__body">
-                    <p><strong>Это не финансовая рекомендация.</strong> Калькулятор показывает математическую модель на основе Whitepaper v1.0. Реальные выплаты зависят от:</p>
+                    <p><strong>Это не финансовая рекомендация.</strong> Калькулятор показывает математическую модель на основе официальных условий BiNiBit (октябрь 2026). Реальные выплаты зависят от:</p>
                     <ul>
-                        <li>фактического общего объёма стейкинга в сети (влияет на APY);</li>
-                        <li>этапа эмиссии (год 1–4, разная скорость эмиссии);</li>
+                        <li>фактической доходности стейкинга (APY 120% — базовая ставка);</li>
                         <li>поведения рефералов (не все будут стейкать одинаково);</li>
                         <li>рыночной цены BINI;</li>
-                        <li>изменений параметров через governance.</li>
+                        <li>квалификации и активности команды;</li>
+                        <li>изменений параметров программы.</li>
                     </ul>
                     <p><strong>Методология:</strong></p>
                     <ul>
-                        <li>Базовый APY вычисляется по формуле Whitepaper 5.2: APY = E_staking × 365 / Total Staked, где E_staking — год 1 = 7M BINI/мес × 12 / 365 дней.</li>
-                        <li>Эффективный APY = базовый × множитель тира.</li>
-                        <li>Реферальные комиссии рассчитываются от ежедневной стейкинг-награды каждого реферала, с учётом уровней L1–L5 (25/15/12/10/8%).</li>
+                        <li>Стейкинг: доход = stake × 120% / 365 × дней. APY фиксирован для всех пакетов.</li>
+                        <li>Split Bonus/Spot: 55/45, 35/65, 25/75, 15/85 — по сроку блокировки.</li>
+                        <li>Реферальные выплаты: процент линии × доход клиента. Клиент получает доход полностью, выплата партнёра финансируется из маржи продукта.</li>
+                        <li>8 рангов (CADET → TOPGUN), каждый определяет глубину L1-L8 и ставки.</li>
                         <li>Предполагается, что каждый L1-реферал приводит в среднем 1.5 реферала на следующий уровень (типичная воронка).</li>
-                        <li>Бонус статуса франшизы добавляется к каждому уровню (Active +1%, Leader +2% и т.д.).</li>
-                        <li>Источники: Whitepaper v1.0 разделы 5.2, 5.3, 9.3, 9.4; актуальные параметры — на <a href="https://binibit.com" target="_blank" rel="noopener">binibit.com</a>.</li>
+                        <li>Источники: <a href="https://binibit.com/ru/earn/affiliate" target="_blank" rel="noopener">binibit.com/ru/earn/affiliate</a>, <a href="https://binibit.com/ru/staking" target="_blank" rel="noopener">binibit.com/ru/staking</a>, официальный <a href="https://internal-api.binibit.com/BiniBit_Whitepaper_v1_.pdf" target="_blank" rel="noopener">Whitepaper</a> (документ обновляется организаторами автоматически).</li>
                     </ul>
                 </div>
             </details>
@@ -299,7 +354,7 @@
     </main>
 
     <footer class="footer">
-        <span>Неофициальный калькулятор доходности · Источник данных: BiNiBit Whitepaper v1.0</span>
+        <span>Неофициальный калькулятор доходности · Источник данных: binibit.com/ru/earn/affiliate</span>
         <span class="footer__date">Обновлено: октябрь 2026</span>
     </footer>
 

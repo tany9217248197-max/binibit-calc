@@ -1,61 +1,52 @@
 /* =====================================================
-   BiNiBit Calculator — логика расчёта по Whitepaper v1.0
-   Источники: разделы 5.2, 5.3, 5.4, 9.3, 9.4
+   BiNiBit Calculator — логика расчёта v3
+   Источники: binibit.com/ru/earn/affiliate (октябрь 2026)
+              binibit.com/ru/staking (октябрь 2026)
    ===================================================== */
 
 (function () {
     'use strict';
 
-    // ====== КОНСТАНТЫ ИЗ WHITEPAPER v1.0 ======
-    const TIERS = {
-        30:  { lockDays: 30,  bonus: 0.55, spot: 0.45, min: 1250,  multiplier: 0.75, exitPenalty: 0.10 },
-        90:  { lockDays: 90,  bonus: 0.35, spot: 0.65, min: 7500,  multiplier: 1.00, exitPenalty: 0.15 },
-        180: { lockDays: 180, bonus: 0.25, spot: 0.75, min: 25000, multiplier: 1.25, exitPenalty: 0.20 },
-        360: { lockDays: 360, bonus: 0.15, spot: 0.85, min: 75000, multiplier: 1.50, exitPenalty: 0.25 }
+    // ====== КОНСТАНТЫ СТЕЙКИНГА (binibit.com/ru/staking) ======
+    // APY 120% для всех пакетов; множителей нет.
+    // Split Bonus/Spot зависит от срока блокировки.
+    const STAKING_APY = 120; // %
+
+    const PACKAGES = {
+        30:  { lockDays: 30,  bonus: 0.55, spot: 0.45, minUsdt: 10, exitPenalty: 0.10, name: 'Стартовый' },
+        90:  { lockDays: 90,  bonus: 0.35, spot: 0.65, minUsdt: 10, exitPenalty: 0.15, name: 'Рост' },
+        180: { lockDays: 180, bonus: 0.25, spot: 0.75, minUsdt: 10, exitPenalty: 0.20, name: 'Pro' },
+        360: { lockDays: 360, bonus: 0.15, spot: 0.85, minUsdt: 10, exitPenalty: 0.25, name: 'Elit' }
     };
 
-    // Эмиссия стейкинга по годам (BINI/мес), Whitepaper 5.2
-    const EMISSION_BY_YEAR = {
-        1: 7_000_000,
-        2: 6_000_000,
-        3: 4_000_000,
-        4: 3_000_000
-    };
-
-    // Реферальные уровни L1-L5, Whitepaper 9.3
-    const REFERRAL_LEVELS = [
-        { level: 1, rate: 0.25, label: 'Прямой реферал' },
-        { level: 2, rate: 0.15, label: 'Реферал реферала' },
-        { level: 3, rate: 0.12, label: '3-я степень' },
-        { level: 4, rate: 0.10, label: '4-я степень' },
-        { level: 5, rate: 0.08, label: '5-я степень' }
+    // ====== РАНГИ ПАРТНЁРСКОЙ ПРОГРАММЫ ======
+    const RANKS = [
+        { code: 'CADET',        minStakeUsdt: 50,     depth: 1, rates: [0.08] },
+        { code: 'CO-PILOT',     minStakeUsdt: 100,    depth: 2, rates: [0.09, 0.07] },
+        { code: 'CAPTAIN',      minStakeUsdt: 300,    depth: 3, rates: [0.10, 0.07, 0.03] },
+        { code: 'SUPERSONIC',   minStakeUsdt: 1000,   depth: 4, rates: [0.11, 0.07, 0.03, 0.02] },
+        { code: 'SQUADRON',     minStakeUsdt: 2500,   depth: 5, rates: [0.11, 0.07, 0.03, 0.02, 0.02] },
+        { code: 'MARSHAL',      minStakeUsdt: 5000,   depth: 6, rates: [0.11, 0.07, 0.03, 0.02, 0.02, 0.02] },
+        { code: 'STRATOSPHERE', minStakeUsdt: 10000,  depth: 7, rates: [0.11, 0.07, 0.03, 0.02, 0.02, 0.02, 0.015] },
+        { code: 'TOPGUN',       minStakeUsdt: 20000,  depth: 8, rates: [0.11, 0.07, 0.03, 0.02, 0.02, 0.02, 0.015, 0.015] }
     ];
 
-    // Бонус статуса франшизы (Whitepaper 9.4)
-    const FRANCHISE_BONUS = [0.00, 0.01, 0.02, 0.03, 0.05]; // последний — Franchise Partner (custom, ~5%)
-
-    // Коэффициент ветвления: каждый L1 приводит в среднем N рефералов на следующий уровень
-    // Это типичная воронка — не выдумка, а реалистичное предположение
     const BRANCHING_FACTOR = 1.5;
 
     // ====== DOM ======
     const el = (id) => document.getElementById(id);
-    const stakeAmount = el('stake-amount');
-    const stakeHint = el('stake-hint');
-    const tierBtns = document.querySelectorAll('.tier-btn');
-    const totalStaked = el('total-staked');
-    const totalStakedVal = el('total-staked-val');
-    const totalStakedScenario = el('total-staked-scenario');
+    const stakesContainer = el('stakes-container');
+    const btnAddStake = el('btn-add-stake');
     const biniPrice = el('bini-price');
     const referralCount = el('referral-count');
     const referralStake = el('referral-stake');
-    const franchiseStatus = el('franchise-status');
+    const rankSelect = el('rank-select');
+    const btnRecalc = el('btn-recalc');
 
     const periodLabel = el('period-label');
     const resultTabs = document.querySelectorAll('.result-tab');
     const resultPanels = document.querySelectorAll('.result-panel');
 
-    // Metric outputs
     const out = {
         apyEffective: el('apy-effective'),
         apyBase: el('apy-base'),
@@ -75,16 +66,15 @@
         brRoi: el('br-roi')
     };
 
-    let currentTier = 180;
+    // ====== СОСТОЯНИЕ ЛИЧНЫХ СТЕЙКОВ ======
+    // По умолчанию: один на 30 дней ($300), другой на 360 дней ($1000)
+    // Как просила Лида — у неё два разных стейка
+    let stakes = [
+        { amount: 300,  package: 30 },
+        { amount: 1000, package: 360 }
+    ];
 
-    // ====== ФУНКЦИИ ======
-    function formatBini(n) {
-        if (!isFinite(n) || n < 0) return '—';
-        if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
-        if (n >= 1000) return (n / 1000).toFixed(2) + 'K';
-        return n.toFixed(1);
-    }
-
+    // ====== ФУНКЦИИ ФОРМАТИРОВАНИЯ ======
     function formatNumber(n, decimals = 0) {
         if (!isFinite(n)) return '—';
         return new Intl.NumberFormat('ru-RU', {
@@ -107,156 +97,227 @@
         return n.toFixed(0) + '%';
     }
 
-    // Базовый APY по Whitepaper 5.2: APY = E_staking × 365 / Total Staked
-    // E_staking (год 1) = 7M BINI/мес × 12 мес / 365 дней
-    // То есть годовая эмиссия стейкинга: 7M × 12 = 84M BINI
-    function calcBaseApy(totalStakedMillions, year = 1) {
-        const emissionPerYear = EMISSION_BY_YEAR[year] * 12; // годовая эмиссия
-        const totalStaked = totalStakedMillions * 1_000_000;
-        if (totalStaked <= 0) return 0;
-        return (emissionPerYear / totalStaked) * 100;
+    // ====== ОТРИСОВКА ЛИЧНЫХ СТЕЙКОВ ======
+    function renderStakes() {
+        stakesContainer.innerHTML = '';
+        stakes.forEach((s, idx) => {
+            const pkg = PACKAGES[s.package];
+            const row = document.createElement('div');
+            row.className = 'stake-row';
+            row.innerHTML = `
+                <div class="stake-row__field">
+                    <label>Сумма, USDT</label>
+                    <input type="number" min="10" step="10" value="${s.amount}" data-stake-idx="${idx}" data-stake-field="amount">
+                </div>
+                <div class="stake-row__field">
+                    <label>Пакет</label>
+                    <select data-stake-idx="${idx}" data-stake-field="package">
+                        <option value="30" ${s.package === 30 ? 'selected' : ''}>Стартовый · 30д</option>
+                        <option value="90" ${s.package === 90 ? 'selected' : ''}>Рост · 90д</option>
+                        <option value="180" ${s.package === 180 ? 'selected' : ''}>Pro · 180д</option>
+                        <option value="360" ${s.package === 360 ? 'selected' : ''}>Elit · 360д</option>
+                    </select>
+                </div>
+                ${stakes.length > 1 ? `<button type="button" class="stake-row__remove" data-remove-idx="${idx}" title="Удалить">✕</button>` : ''}
+            `;
+            stakesContainer.appendChild(row);
+        });
+
+        // Привязка событий к новым элементам
+        stakesContainer.querySelectorAll('input[data-stake-idx]').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const idx = parseInt(e.target.dataset.stakeIdx);
+                const field = e.target.dataset.stakeField;
+                stakes[idx][field] = parseFloat(e.target.value) || 0;
+                // Авто-расчёт при изменении не запускаем — пользователь просил кнопку ПЕРЕСЧИТАТЬ
+                markStale();
+            });
+        });
+        stakesContainer.querySelectorAll('select[data-stake-idx]').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const idx = parseInt(e.target.dataset.stakeIdx);
+                const field = e.target.dataset.stakeField;
+                stakes[idx][field] = parseInt(e.target.value);
+                markStale();
+            });
+        });
+        stakesContainer.querySelectorAll('[data-remove-idx]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(e.target.dataset.removeIdx);
+                stakes.splice(idx, 1);
+                renderStakes();
+                markStale();
+            });
+        });
     }
 
-    function getScenario(staked) {
-        if (staked <= 15) return 'Ранний bootstrap';
-        if (staked <= 30) return 'Ранний рост';
-        if (staked <= 75) return 'Умеренное вовлечение';
-        if (staked <= 150) return 'Высокое вовлечение';
-        return 'Очень высокое вовлечение';
+    // ====== Подсветка "требуется пересчёт" ======
+    let isStale = false;
+    function markStale() {
+        isStale = true;
+        btnRecalc.classList.add('btn-recalc--pulse');
+        btnRecalc.querySelector('span:last-child').textContent = 'ПЕРЕСЧИТАТЬ ●';
+    }
+    function clearStale() {
+        isStale = false;
+        btnRecalc.classList.remove('btn-recalc--pulse');
+        btnRecalc.querySelector('span:last-child').textContent = 'ПЕРЕСЧИТАТЬ';
     }
 
-    // Эффективный APY с учётом множителя тира
-    function calcEffectiveApy(baseApy, tier) {
-        return baseApy * TIERS[tier].multiplier;
+    // ====== ЛОГИКА РАСЧЁТА ======
+    function calcDailyReward(stakeUsdt, apy) {
+        return stakeUsdt * (apy / 100) / 365;
     }
 
-    // Дневной доход: R_daily(u) = S_u × (APY_effective × m_tier) / 365
-    // Здесь уже APY_effective = base × multiplier, поэтому:
-    function calcDailyReward(stake, effectiveApy) {
-        return stake * (effectiveApy / 100) / 365;
+    function getActiveRank(totalStakeUsdt) {
+        let active = RANKS[0];
+        for (const r of RANKS) {
+            if (totalStakeUsdt >= r.minStakeUsdt) active = r;
+        }
+        return active;
     }
 
-    // Реферальные уровни: считаем, что на каждом следующем уровне
-    // количество людей = предыдущее × BRANCHING_FACTOR (округление вниз)
-    function calcReferralTree(directCount) {
+    function calcReferralTree(directCount, depth) {
         const tree = [];
         let count = directCount;
-        for (const lvl of REFERRAL_LEVELS) {
-            tree.push({ ...lvl, count: count });
+        for (let i = 0; i < depth; i++) {
+            tree.push({ level: i + 1, count: count });
             count = Math.floor(count * BRANCHING_FACTOR);
+            if (count === 0) break;
         }
         return tree;
     }
 
-    // Доход с каждого уровня рефералов:
-    // commission = sum(по каждому рефералу уровня) × referral_daily_reward × rate
-    // Здесь упрощённо: считаем, что каждый реферал стейкает referralStake на тире 90 дней
-    // (типичный выбор среднего пользователя) — это разумное допущение
-    function calcReferralIncome(tree, referralStakeAmount, baseApy, franchiseIdx, days) {
-        const fb = FRANCHISE_BONUS[franchiseIdx] || 0;
-        // Допущение: рефералы стейкают на тире 90 дней (множитель 1.0) — самый популярный тир
-        const refTier = 90;
-        const refEffectiveApy = calcEffectiveApy(baseApy, refTier);
-        const refDailyPerUser = calcDailyReward(referralStakeAmount, refEffectiveApy);
-
-        let totalPerDay = 0;
-        const breakdown = tree.map(lvl => {
-            const rate = lvl.rate + fb;
-            const perDay = lvl.count * refDailyPerUser * rate;
-            totalPerDay += perDay;
-            return { ...lvl, rate, perDay, total: perDay * days };
-        });
-        return { breakdown, totalPerDay, total: totalPerDay * days };
-    }
-
-    // ====== ОТРИСОВКА ======
+    // ====== ОТРИСОВКА РЕЗУЛЬТАТА ======
     function render() {
-        const stake = parseFloat(stakeAmount.value) || 0;
-        const tier = TIERS[currentTier];
-        const totalStakedM = parseFloat(totalStaked.value) || 50;
-        const price = parseFloat(biniPrice.value) || 0;
+        const price = parseFloat(biniPrice.value) || 0.12;
         const refCount = parseInt(referralCount.value) || 0;
-        const refStake = parseFloat(referralStake.value) || 0;
-        const franchiseIdx = parseInt(franchiseStatus.value) || 0;
+        const refStakeUsdt = parseFloat(referralStake.value) || 0;
+        const rankIdx = parseInt(rankSelect.value) || 0;
+        const rank = RANKS[rankIdx];
 
-        // Валидация минималки тира
-        if (stake < tier.min) {
-            stakeHint.textContent = `⚠ Минимум для тира ${currentTier} дней — ${formatNumber(tier.min)} BINI`;
-            stakeHint.className = 'field__hint field__hint--err';
-        } else {
-            stakeHint.textContent = `✓ Допустимо для тира ${currentTier} дней`;
-            stakeHint.className = 'field__hint field__hint--ok';
-        }
+        // Сумма личных стейков
+        const totalStakeUsdt = stakes.reduce((sum, s) => sum + (s.amount || 0), 0);
 
-        // Сценарий
-        totalStakedVal.textContent = totalStakedM;
-        totalStakedScenario.textContent = getScenario(totalStakedM);
+        // Период для отображения — берём максимальный из стейков (для периода отображения дохода)
+        // Но считаем каждый стейк отдельно со своим периодом
+        const maxLockDays = Math.max(...stakes.map(s => PACKAGES[s.package].lockDays));
+        periodLabel.textContent = `за ${maxLockDays} дней (макс. пакет)`;
 
-        // Период
-        periodLabel.textContent = `за ${tier.lockDays} дней`;
+        // === Стейкинг — считаем каждый стейк отдельно ===
+        const apy = STAKING_APY;
+        let totalDaily = 0;
+        let totalPeriodReward = 0;
+        let totalBonus = 0;
+        let totalSpot = 0;
 
-        // === Стейкинг ===
-        const baseApy = calcBaseApy(totalStakedM, 1);
-        const effectiveApy = calcEffectiveApy(baseApy, currentTier);
-        const dailyReward = calcDailyReward(stake, effectiveApy);
-        const periodReward = dailyReward * tier.lockDays;
-        const bonusPart = periodReward * tier.bonus;
-        const spotPart = periodReward * tier.spot;
+        // Для split-bar берём средневзвешенный split
+        let weightedBonus = 0;
+        let weightedSpot = 0;
+        let totalStakeForWeight = 0;
 
-        out.apyEffective.textContent = formatApy(effectiveApy);
-        out.apyBase.textContent = `базовый ${formatApy(baseApy)} × множитель ${tier.multiplier}`;
-        out.stakingPeriod.textContent = `${formatNumber(periodReward, 1)} BINI`;
-        out.stakingPeriodUsd.textContent = `≈ ${formatUsd(periodReward * price)}`;
-        out.stakingDaily.textContent = `${formatNumber(dailyReward, 2)} BINI`;
-        out.stakingDailyUsd.textContent = `≈ ${formatUsd(dailyReward * price)}`;
-        out.splitBonus.textContent = `${formatNumber(bonusPart, 0)} BINI`;
-        out.splitSpot.textContent = `${formatNumber(spotPart, 0)} BINI`;
+        stakes.forEach(s => {
+            const pkg = PACKAGES[s.package];
+            const daily = calcDailyReward(s.amount, apy);
+            const period = daily * pkg.lockDays;
+            totalDaily += daily;
+            totalPeriodReward += period;
+            totalBonus += period * pkg.bonus;
+            totalSpot += period * pkg.spot;
+            weightedBonus += pkg.bonus * s.amount;
+            weightedSpot += pkg.spot * s.amount;
+            totalStakeForWeight += s.amount;
+        });
 
-        // Ширина сплит-бара пропорциональна доле
-        document.querySelector('.split-bar__item--bonus').style.width = (tier.bonus * 100) + '%';
-        document.querySelector('.split-bar__item--spot').style.width = (tier.spot * 100) + '%';
+        const avgBonus = totalStakeForWeight > 0 ? weightedBonus / totalStakeForWeight : 0.25;
+        const avgSpot = totalStakeForWeight > 0 ? weightedSpot / totalStakeForWeight : 0.75;
+
+        out.apyEffective.textContent = formatApy(apy);
+        out.apyBase.textContent = `фиксированный APY · ${rank.code}`;
+        out.stakingPeriod.textContent = `${formatUsd(totalPeriodReward)}`;
+        out.stakingPeriodUsd.textContent = `${formatNumber(totalPeriodReward / price, 1)} BINI`;
+        out.stakingDaily.textContent = `${formatUsd(totalDaily)}`;
+        out.stakingDailyUsd.textContent = `${formatNumber(totalDaily / price, 2)} BINI/день`;
+        out.splitBonus.textContent = `${formatUsd(totalBonus)}`;
+        out.splitSpot.textContent = `${formatUsd(totalSpot)}`;
+
+        // Ширина сплит-бара — средневзвешенная
+        document.querySelector('.split-bar__item--bonus').style.width = (avgBonus * 100) + '%';
+        document.querySelector('.split-bar__item--spot').style.width = (avgSpot * 100) + '%';
+        const bonusLabel = document.querySelector('.split-bar__item--bonus span');
+        const spotLabel = document.querySelector('.split-bar__item--spot span');
+        if (bonusLabel) bonusLabel.textContent = `Bonus ${(avgBonus * 100).toFixed(0)}%`;
+        if (spotLabel) spotLabel.textContent = `Spot ${(avgSpot * 100).toFixed(0)}%`;
 
         // === Рефералы ===
-        const tree = calcReferralTree(refCount);
-        const refResult = calcReferralIncome(tree, refStake, baseApy, franchiseIdx, tier.lockDays);
+        const tree = calcReferralTree(refCount, rank.depth);
+        const clientDaily = calcDailyReward(refStakeUsdt, apy);
+        // Период для расчёта реферальных берем максимальный — клиент стейкает на максимальный пакет
+        const refPeriod = clientDaily * maxLockDays;
 
-        out.refTotal.textContent = `${formatNumber(refResult.total, 1)} BINI`;
-        out.refTotalUsd.textContent = `≈ ${formatUsd(refResult.total * price)}`;
+        let totalRefIncome = 0;
+        const breakdown = tree.map((node, i) => {
+            const rate = rank.rates[i] || 0;
+            const perClient = refPeriod * rate;
+            const levelTotal = node.count * perClient;
+            totalRefIncome += levelTotal;
+            return {
+                level: node.level,
+                count: node.count,
+                rate: rate,
+                perClient: perClient,
+                total: levelTotal
+            };
+        });
 
-        // Список уровней
+        out.refTotal.textContent = `${formatUsd(totalRefIncome)}`;
+        out.refTotalUsd.textContent = `${formatNumber(totalRefIncome / price, 1)} BINI`;
+
         out.refLevels.innerHTML = '';
-        refResult.breakdown.forEach((lvl, i) => {
+        breakdown.forEach((lvl) => {
             const div = document.createElement('div');
             div.className = `ref-level ref-level--l${lvl.level}`;
+            const ratePct = (lvl.rate * 100).toFixed(lvl.rate * 100 % 1 === 0 ? 0 : 1);
             div.innerHTML = `
                 <span class="ref-level__label">L${lvl.level}</span>
-                <span class="ref-level__rate">${(lvl.rate * 100).toFixed(0)}% · ${lvl.label}</span>
+                <span class="ref-level__rate">${ratePct}% · линия ${lvl.level}</span>
                 <span class="ref-level__count">${formatNumber(lvl.count)} чел.</span>
-                <span class="ref-level__value">${formatNumber(lvl.total, 1)} BINI</span>
+                <span class="ref-level__value">${formatUsd(lvl.total)}</span>
             `;
             out.refLevels.appendChild(div);
         });
 
         // === Итог ===
-        const grandTotal = periodReward + refResult.total;
-        const grandUsd = grandTotal * price;
-        const roi = stake > 0 ? (grandTotal / stake * 100) : 0;
+        const grandTotal = totalPeriodReward + totalRefIncome;
+        const grandBini = grandTotal / price;
+        const roi = totalStakeUsdt > 0 ? (grandTotal / totalStakeUsdt * 100) : 0;
 
-        out.grandTotal.textContent = `${formatNumber(grandTotal, 1)} BINI`;
-        out.grandTotalUsd.textContent = `≈ ${formatUsd(grandUsd)}`;
-        out.brStaking.textContent = `${formatNumber(periodReward, 1)} BINI`;
-        out.brReferral.textContent = `${formatNumber(refResult.total, 1)} BINI`;
+        out.grandTotal.textContent = `${formatUsd(grandTotal)}`;
+        out.grandTotalUsd.textContent = `${formatNumber(grandBini, 1)} BINI`;
+        out.brStaking.textContent = `${formatUsd(totalPeriodReward)}`;
+        out.brReferral.textContent = `${formatUsd(totalRefIncome)}`;
         out.brRoi.textContent = `ROI ${formatNumber(roi, 0)}%`;
+
+        clearStale();
     }
 
     // ====== СОБЫТИЯ ======
-    tierBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            tierBtns.forEach(b => b.classList.remove('tier-btn--active'));
-            btn.classList.add('tier-btn--active');
-            currentTier = parseInt(btn.dataset.tier);
-            render();
-        });
+    btnAddStake.addEventListener('click', () => {
+        stakes.push({ amount: 100, package: 180 });
+        renderStakes();
+        markStale();
+    });
+
+    btnRecalc.addEventListener('click', () => {
+        render();
+        // Эффект "вращения" иконки
+        const icon = btnRecalc.querySelector('.btn-recalc__icon');
+        icon.style.transition = 'transform 0.5s';
+        icon.style.transform = 'rotate(360deg)';
+        setTimeout(() => {
+            icon.style.transition = 'none';
+            icon.style.transform = 'rotate(0deg)';
+        }, 500);
     });
 
     resultTabs.forEach(tab => {
@@ -268,12 +329,12 @@
         });
     });
 
-    [stakeAmount, totalStaked, biniPrice, referralCount, referralStake, franchiseStatus]
-        .forEach(input => {
-            const evt = input.type === 'range' || input.tagName === 'SELECT' ? 'input' : 'input';
-            input.addEventListener(evt, render);
-        });
+    [biniPrice, referralCount, referralStake, rankSelect].forEach(input => {
+        input.addEventListener('input', markStale);
+        input.addEventListener('change', markStale);
+    });
 
     // Стартовая отрисовка
+    renderStakes();
     render();
 })();

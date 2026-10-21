@@ -1,24 +1,23 @@
 # BiNiBit Calculator — лид-магнит для привлечения пользователей
 
-Интерактивный калькулятор доходности стейкинга **BINI** и реферальной сети BiNiBit. Все параметры — из официального [Whitepaper v1.0](https://internal-api.binibit.com/BiniBit_Whitepaper_v1_.pdf) (март 2026).
+Интерактивный калькулятор доходности стейкинга **BINI** и партнёрской программы BiNiBit. Параметры — из официальных условий [binibit.com/ru/earn/affiliate](https://binibit.com/ru/earn/affiliate) и [binibit.com/ru/staking](https://binibit.com/ru/staking) (октябрь 2026).
 
 ## Что считает
 
-- **Стейкинг BINI**: 4 тира (30 / 90 / 180 / 360 дней) с правильными множителями 0.75 / 1.0 / 1.25 / 1.5
-- **Базовый APY** по формуле Whitepaper 5.2: `E_staking × 365 / Total Staked`
-- **Split Bonus/Spot** (55/45, 35/65, 25/75, 15/85) — по таблице 5.3
-- **Реферальная сеть**: 5 уровней L1–L5 (25% / 15% / 12% / 10% / 8%) — раздел 9.3
-- **Бонус статуса франшизы**: Member / Active / Leader / Senior Leader / Franchise Partner — раздел 9.4
-- **ROI** к вложенной сумме в BINI и USD
+- **Стейкинг BINI**: 4 тира (30 / 90 / 180 / 360 дней), фиксированный APY 120%
+- **Split Bonus/Spot** (55/45, 35/65, 25/75, 15/85) — по сроку блокировки
+- **Партнёрская программа**: 8 рангов (CADET → TOPGUN), 8 уровней L1-L8, до 30% суммарно
+- **Лидерские пулы**: 7 пулов, 35% прибыли компании
+- **ROI** к вложенной сумме в USDT и BINI
 
 ## Источники данных
 
 | Параметр | Источник |
 |---|---|
-| Тиры стейкинга | Whitepaper v1.0, раздел 5.3 |
-| Формула APY | Whitepaper v1.0, раздел 5.2 |
-| Реферальные уровни | Whitepaper v1.0, раздел 9.3 |
-| Статусы франшизы | Whitepaper v1.0, раздел 9.4 |
+| Тиры стейкинга | [binibit.com/ru/staking](https://binibit.com/ru/staking) |
+| APY 120% | [binibit.com/ru/staking](https://binibit.com/ru/staking) |
+| Ранги и уровни L1-L8 | [binibit.com/ru/earn/affiliate](https://binibit.com/ru/earn/affiliate) |
+| Лидерские пулы | [binibit.com/ru/earn/affiliate](https://binibit.com/ru/earn/affiliate) |
 | Бренд-цвета | [binibit.com](https://binibit.com) (`#0b0e11`, `#36d9ff`, `#68e67b`, `#ffd44d`) |
 
 ## Технологии
@@ -55,7 +54,7 @@ https://<username>.github.io/binibit-calc/
 binibit-calc/
 ├── index.html              # Структура страницы
 ├── styles.css              # Фирменный тёмный стиль BiNiBit
-├── app.js                  # Логика расчёта по Whitepaper
+├── app.js                  # Логика расчётов
 ├── .github/workflows/
 │   └── deploy.yml          # Авто-деплой на GitHub Pages
 ├── README.md               # Этот файл
@@ -64,7 +63,7 @@ binibit-calc/
 
 ## Дисклеймер
 
-Калькулятор показывает математическую модель на основе Whitepaper v1.0. **Не является финансовой рекомендацией.** Реальные выплаты зависят от фактического объёма стейкинга в сети, этапа эмиссии, поведения рефералов и рыночной цены BINI.
+Калькулятор показывает математическую модель на основе официальных условий BiNiBit (октябрь 2026). **Не является финансовой рекомендацией.** Реальные выплаты зависят от фактической доходности, поведения рефералов, рыночной цены BINI и квалификации.
 
 ## Лицензия
 
