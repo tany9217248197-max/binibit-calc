@@ -18,7 +18,7 @@
 
     <header class="header">
         <div class="header__logo">
-            <span class="logo-mark">B</span>
+            <img src="logo.png" alt="BiNiBit" class="header__logo-img">
             <span class="logo-text">BiNiBit <em>Calculator</em></span>
         </div>
         <div class="header__badges">
@@ -31,6 +31,7 @@
         <section class="hero">
             <h1>Калькулятор доходности <span class="text-gradient">BiNiBit</span></h1>
             <p class="hero__subtitle">Рассчитайте пассивный доход от стейкинга <strong>BINI</strong> и партнёрские вознаграждения по 8-уровневой реферальной сети. Все параметры — из официальных условий <strong>binibit.com/ru/earn/affiliate</strong>.</p>
+            <p class="hero__disclaimer">Данный калькулятор является лишь математической моделью, которая не дает гарантий реального заработка.</p>
         </section>
 
         <section class="calc-grid">
@@ -68,14 +69,13 @@
                     </select>
                 </div>
 
-                <div class="field">
-                    <label for="referral-count">Сколько у вас прямых рефералов (L1)?</label>
-                    <input type="number" id="referral-count" min="0" step="1" value="10">
-                </div>
-
-                <div class="field">
-                    <label>Средний стейк одного реферала, BINI</label>
-                    <input type="number" id="referral-stake" min="0" step="100" value="4150">
+                <!-- Рефералы по уровням L1-L8 -->
+                <div class="stakes-section">
+                    <div class="stakes-section__title">Рефералы по уровням (L1–L8)</div>
+                    <div id="ref-levels-container">
+                        <!-- Заполняется JS: по умолчанию L1, L2, L3 -->
+                    </div>
+                    <button type="button" id="btn-add-ref-level" class="btn-add-stake">+ Добавить ещё рефералов и их стейкинг</button>
                 </div>
 
                 <button type="button" id="btn-recalc" class="btn-recalc">
@@ -88,12 +88,17 @@
             <div class="card card--result">
                 <div class="card__header card__header--accent">
                     <h2>Ваш потенциальный доход</h2>
-                    <span class="card__period" id="period-label">за 180 дней</span>
+                    <div class="period-switcher">
+                        <span class="card__period" id="period-label">за 360 дней</span>
+                        <button type="button" class="period-btn" data-period="30">за 30 дней</button>
+                        <button type="button" class="period-btn period-btn--active" data-period="360">за 360 дней</button>
+                    </div>
                 </div>
 
                 <div class="result-tabs" id="result-tabs">
                     <button type="button" class="result-tab result-tab--active" data-tab="staking">Стейкинг</button>
                     <button type="button" class="result-tab" data-tab="referral">Рефералы</button>
+                    <button type="button" class="result-tab" data-tab="pools">Лидерские пулы</button>
                     <button type="button" class="result-tab" data-tab="total">Итог</button>
                 </div>
 
@@ -108,12 +113,12 @@
                         <div class="metric">
                             <div class="metric__label">Доход за период</div>
                             <div class="metric__value" id="staking-period">—</div>
-                            <div class="metric__sub" id="staking-period-usd">≈ — BINI</div>
+                            <div class="metric__sub" id="staking-period-usd">≈ — USD</div>
                         </div>
                         <div class="metric">
                             <div class="metric__label">Доход в день</div>
                             <div class="metric__value" id="staking-daily">—</div>
-                            <div class="metric__sub" id="staking-daily-usd">≈ — BINI/день</div>
+                            <div class="metric__sub" id="staking-daily-usd">≈ — USD/день</div>
                         </div>
                     </div>
                     <div class="split-bar">
@@ -134,12 +139,25 @@
                     <div class="metric metric--hero">
                         <div class="metric__label">Доход с рефералов за период</div>
                         <div class="metric__value text-gradient" id="ref-total">—</div>
-                        <div class="metric__sub" id="ref-total-usd">≈ — BINI</div>
+                        <div class="metric__sub" id="ref-total-usd">≈ — USD</div>
                     </div>
-                    <div class="ref-levels" id="ref-levels">
+                    <div class="ref-levels" id="ref-levels-list">
                         <!-- генерируется JS -->
                     </div>
                     <p class="result-note">Выплата партнёру = процент линии × доход клиента в этой линии. Клиент получает свой доход полностью — выплата не вычитается из него.</p>
+                </div>
+
+                <!-- Лидерские пулы -->
+                <div class="result-panel" id="panel-pools">
+                    <div class="metric metric--hero">
+                        <div class="metric__label">Потенциальный бонус лидерских пулов</div>
+                        <div class="metric__value text-gradient" id="pools-total">—</div>
+                        <div class="metric__sub" id="pools-total-usd">≈ — USD</div>
+                    </div>
+                    <div class="pools-list" id="pools-list">
+                        <!-- генерируется JS -->
+                    </div>
+                    <p class="result-note">35% прибыли компании распределяется между всеми квалифицированными участниками пулов. Квалификация — по командному объёму. Бонус — оценочный, зависит от числа квалифицированных участников в периоде.</p>
                 </div>
 
                 <!-- Итог -->
@@ -147,7 +165,7 @@
                     <div class="metric metric--hero">
                         <div class="metric__label">Общий доход за период</div>
                         <div class="metric__value text-gradient" id="grand-total">—</div>
-                        <div class="metric__sub" id="grand-total-usd">≈ — BINI</div>
+                        <div class="metric__sub" id="grand-total-usd">≈ — USD</div>
                     </div>
                     <div class="breakdown-list">
                         <div class="breakdown-item">
@@ -157,6 +175,10 @@
                         <div class="breakdown-item">
                             <span>Реферальная сеть (L1–L8)</span>
                             <strong id="br-referral">—</strong>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>Лидерские пулы (оценочно)</span>
+                            <strong id="br-pools">—</strong>
                         </div>
                         <div class="breakdown-item breakdown-item--total">
                             <span>ROI к вложенной сумме</span>
@@ -319,7 +341,7 @@
                 <div class="cta__action">
                     <a href="https://t.me/Binibit_Global_bot" class="btn-cta" target="_blank" rel="noopener">
                         <span class="btn-cta__icon">→</span>
-                        <span class="btn-cta__text">Открыть @Binibit_Global_bot</span>
+                        <span class="btn-cta__text">СТАТЬ ПАРТНЁРОМ BINIBIT</span>
                     </a>
                     <a href="https://binibit.com/ru/earn/affiliate" class="btn-docs" target="_blank" rel="noopener">Условия программы</a>
                     <p class="cta__footnote">Кнопка перенаправит в Telegram и там ИИ-помощник ответит на ваши вопросы и поможет зарегистрироваться. Так же можно задать вопросы человеку. После подтверждения активного стейкинга ИИ-помощник автоматически добавит вашу партнёрскую ссылку в алгоритм распределения для следующих партнёров. Следуйте подсказкам ИИ-помощника.</p>
@@ -331,7 +353,8 @@
             <details>
                 <summary>Дисклеймер и методология расчёта</summary>
                 <div class="disclaimer__body">
-                    <p><strong>Это не финансовая рекомендация.</strong> Калькулятор показывает математическую модель на основе официальных условий BiNiBit (октябрь 2026). Реальные выплаты зависят от:</p>
+                    <p class="disclaimer__main"><strong>Данный калькулятор является лишь математической моделью, которая не дает гарантий реального заработка и не является финансовой рекомендацией, так как фактический доход зависит от рыночной цены токена BINI, вашей активности и активности ваших рефералов.</strong></p>
+                    <p>Калькулятор показывает математическую модель на основе официальных условий BiNiBit (октябрь 2026). Реальные выплаты зависят от:</p>
                     <ul>
                         <li>фактической доходности стейкинга (APY 120% — базовая ставка);</li>
                         <li>поведения рефералов (не все будут стейкать одинаково);</li>
@@ -345,7 +368,8 @@
                         <li>Split Bonus/Spot: 55/45, 35/65, 25/75, 15/85 — по сроку блокировки.</li>
                         <li>Реферальные выплаты: процент линии × доход клиента. Клиент получает доход полностью, выплата партнёра финансируется из маржи продукта.</li>
                         <li>8 рангов (CADET → TOPGUN), каждый определяет глубину L1-L8 и ставки.</li>
-                        <li>Предполагается, что каждый L1-реферал приводит в среднем 1.5 реферала на следующий уровень (типичная воронка).</li>
+                        <li>Доходы по реферальной сети считаются по каждому уровню отдельно с учётом количества рефералов и их суммарного стейкинга на каждом уровне.</li>
+                        <li>Лидерские пулы: 35% прибыли компании распределяются между всеми квалифицированными участниками. Оценка бонуса зависит от числа участников в периоде.</li>
                         <li>Источники: <a href="https://binibit.com/ru/earn/affiliate" target="_blank" rel="noopener">binibit.com/ru/earn/affiliate</a>, <a href="https://binibit.com/ru/staking" target="_blank" rel="noopener">binibit.com/ru/staking</a>, официальный <a href="https://internal-api.binibit.com/BiniBit_Whitepaper_v1_.pdf" target="_blank" rel="noopener">Whitepaper</a> (документ обновляется организаторами автоматически).</li>
                     </ul>
                 </div>

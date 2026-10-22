@@ -1,5 +1,5 @@
 /* =====================================================
-   BiNiBit Calculator — логика расчёта v3
+   BiNiBit Calculator — логика расчёта v4
    Источники: binibit.com/ru/earn/affiliate (октябрь 2026)
               binibit.com/ru/staking (октябрь 2026)
    ===================================================== */
@@ -7,9 +7,7 @@
 (function () {
     'use strict';
 
-    // ====== КОНСТАНТЫ СТЕЙКИНГА (binibit.com/ru/staking) ======
-    // APY 120% для всех пакетов; множителей нет.
-    // Split Bonus/Spot зависит от срока блокировки.
+    // ====== КОНСТАНТЫ СТЕЙКИНГА ======
     const STAKING_APY = 120; // %
 
     const PACKAGES = {
@@ -31,21 +29,37 @@
         { code: 'TOPGUN',       minStakeUsdt: 20000,  depth: 8, rates: [0.11, 0.07, 0.03, 0.02, 0.02, 0.02, 0.015, 0.015] }
     ];
 
-    const BRANCHING_FACTOR = 1.5;
+    // ====== ЛИДЕРСКИЕ ПУЛЫ ======
+    // Каждый пул: доля от прибыли + порог командного объёма в USD
+    const LEADER_POOLS = [
+        { pool: 1, share: 0.10, minVolumeUsd: 10000 },
+        { pool: 2, share: 0.08, minVolumeUsd: 30000 },
+        { pool: 3, share: 0.06, minVolumeUsd: 100000 },
+        { pool: 4, share: 0.04, minVolumeUsd: 300000 },
+        { pool: 5, share: 0.03, minVolumeUsd: 1000000 },
+        { pool: 6, share: 0.02, minVolumeUsd: 3000000 },
+        { pool: 7, share: 0.02, minVolumeUsd: 10000000 }
+    ];
+
+    // Оценка прибыли компании за период (для расчёта пулов)
+    // Допущение: 30% от общего объёма стейкинга сети = месячная прибыль компании
+    // На деле — переменная величина, поэтому даём оценку
+    const ESTIMATED_COMPANY_PROFIT_PER_MONTH_USD = 100000; // 100K USD/мес — оценочно
 
     // ====== DOM ======
     const el = (id) => document.getElementById(id);
     const stakesContainer = el('stakes-container');
     const btnAddStake = el('btn-add-stake');
+    const refLevelsContainer = el('ref-levels-container');
+    const btnAddRefLevel = el('btn-add-ref-level');
     const biniPrice = el('bini-price');
-    const referralCount = el('referral-count');
-    const referralStake = el('referral-stake');
     const rankSelect = el('rank-select');
     const btnRecalc = el('btn-recalc');
 
     const periodLabel = el('period-label');
     const resultTabs = document.querySelectorAll('.result-tab');
     const resultPanels = document.querySelectorAll('.result-panel');
+    const periodBtns = document.querySelectorAll('.period-btn');
 
     const out = {
         apyEffective: el('apy-effective'),
@@ -58,21 +72,35 @@
         splitSpot: el('split-spot'),
         refTotal: el('ref-total'),
         refTotalUsd: el('ref-total-usd'),
-        refLevels: el('ref-levels'),
+        refLevels: el('ref-levels-list'),
+        poolsTotal: el('pools-total'),
+        poolsTotalUsd: el('pools-total-usd'),
+        poolsList: el('pools-list'),
         grandTotal: el('grand-total'),
         grandTotalUsd: el('grand-total-usd'),
         brStaking: el('br-staking'),
         brReferral: el('br-referral'),
+        brPools: el('br-pools'),
         brRoi: el('br-roi')
     };
 
     // ====== СОСТОЯНИЕ ЛИЧНЫХ СТЕЙКОВ ======
-    // По умолчанию: один на 30 дней (≈ $300), другой на 360 дней (≈ $1000)
-    // при цене BINI $0.12 → $300 = 2500 BINI, $1000 = 8333 BINI
     let stakes = [
         { amount: 2500, package: 30 },
         { amount: 8300, package: 360 }
     ];
+
+    // ====== СОСТОЯНИЕ РЕФЕРАЛОВ ПО УРОВНЯМ L1-L8 ======
+    // Каждый уровень: { count, totalStakeBini }
+    // По умолчанию L1, L2, L3 — пользователь может добавить ещё до L8
+    let refLevels = [
+        { level: 1, count: 10, totalStakeBini: 25000 },
+        { level: 2, count: 15, totalStakeBini: 30000 },
+        { level: 3, count: 22, totalStakeBini: 40000 }
+    ];
+
+    // Текущий выбранный период для отображения дохода (30 или 360 дней)
+    let currentDisplayPeriod = 360;
 
     // ====== ФУНКЦИИ ФОРМАТИРОВАНИЯ ======
     function formatNumber(n, decimals = 0) {
@@ -118,18 +146,16 @@
                         <option value="360" ${s.package === 360 ? 'selected' : ''}>Elit · 360д</option>
                     </select>
                 </div>
-                ${stakes.length > 1 ? `<button type="button" class="stake-row__remove" data-remove-idx="${idx}" title="Удалить">✕</button>` : ''}
+                ${stakes.length > 1 ? `<button type="button" class="stake-row__remove" data-remove-stake="${idx}" title="Удалить">✕</button>` : ''}
             `;
             stakesContainer.appendChild(row);
         });
 
-        // Привязка событий к новым элементам
         stakesContainer.querySelectorAll('input[data-stake-idx]').forEach(input => {
             input.addEventListener('input', (e) => {
                 const idx = parseInt(e.target.dataset.stakeIdx);
                 const field = e.target.dataset.stakeField;
                 stakes[idx][field] = parseFloat(e.target.value) || 0;
-                // Авто-расчёт при изменении не запускаем — пользователь просил кнопку ПЕРЕСЧИТАТЬ
                 markStale();
             });
         });
@@ -141,11 +167,51 @@
                 markStale();
             });
         });
-        stakesContainer.querySelectorAll('[data-remove-idx]').forEach(btn => {
+        stakesContainer.querySelectorAll('[data-remove-stake]').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const idx = parseInt(e.target.dataset.removeIdx);
+                const idx = parseInt(e.target.dataset.removeStake);
                 stakes.splice(idx, 1);
                 renderStakes();
+                markStale();
+            });
+        });
+    }
+
+    // ====== ОТРИСОВКА РЕФЕРАЛОВ ПО УРОВНЯМ L1-L8 ======
+    function renderRefLevelsInput() {
+        refLevelsContainer.innerHTML = '';
+        refLevels.forEach((r, idx) => {
+            const row = document.createElement('div');
+            row.className = 'stake-row';
+            row.innerHTML = `
+                <div class="stake-row__field">
+                    <label>Сколько рефералов (L${r.level})</label>
+                    <input type="number" min="0" step="1" value="${r.count}" data-ref-idx="${idx}" data-ref-field="count">
+                </div>
+                <div class="stake-row__field">
+                    <label>Суммарный стейкинг всего, BINI</label>
+                    <input type="number" min="0" step="100" value="${r.totalStakeBini}" data-ref-idx="${idx}" data-ref-field="totalStakeBini">
+                </div>
+                ${refLevels.length > 1 ? `<button type="button" class="stake-row__remove" data-remove-ref="${idx}" title="Удалить">✕</button>` : ''}
+            `;
+            refLevelsContainer.appendChild(row);
+        });
+
+        refLevelsContainer.querySelectorAll('input[data-ref-idx]').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const idx = parseInt(e.target.dataset.refIdx);
+                const field = e.target.dataset.refField;
+                refLevels[idx][field] = parseFloat(e.target.value) || 0;
+                markStale();
+            });
+        });
+        refLevelsContainer.querySelectorAll('[data-remove-ref]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(e.target.dataset.removeRef);
+                refLevels.splice(idx, 1);
+                // Перенумеруем уровни
+                refLevels.forEach((r, i) => r.level = i + 1);
+                renderRefLevelsInput();
                 markStale();
             });
         });
@@ -177,40 +243,24 @@
         return active;
     }
 
-    function calcReferralTree(directCount, depth) {
-        const tree = [];
-        let count = directCount;
-        for (let i = 0; i < depth; i++) {
-            tree.push({ level: i + 1, count: count });
-            count = Math.floor(count * BRANCHING_FACTOR);
-            if (count === 0) break;
-        }
-        return tree;
-    }
-
     // ====== ОТРИСОВКА РЕЗУЛЬТАТА ======
     function render() {
         const price = parseFloat(biniPrice.value) || 0.12;
-        const refCount = parseInt(referralCount.value) || 0;
-        const refStakeBini = parseFloat(referralStake.value) || 0;
         const rankIdx = parseInt(rankSelect.value) || 0;
         const rank = RANKS[rankIdx];
 
-        // Сумма личных стейков в BINI
+        // Сумма личных стейков в BINI и USDT
         const totalStakeBini = stakes.reduce((sum, s) => sum + (s.amount || 0), 0);
+        const totalStakeUsdt = totalStakeBini * price;
 
-        // Период для отображения — берём максимальный из стейков (для периода отображения дохода)
-        // Но считаем каждый стейк отдельно со своим периодом
-        const maxLockDays = Math.max(...stakes.map(s => PACKAGES[s.package].lockDays));
-        periodLabel.textContent = `за ${maxLockDays} дней (макс. пакет)`;
+        // Период для отображения (30 или 360 дней)
+        const displayDays = currentDisplayPeriod;
+        periodLabel.textContent = `за ${displayDays} дней`;
 
-        // === Стейкинг — считаем каждый стейк отдельно, в BINI ===
+        // === Стейкинг — считаем каждый стейк отдельно ===
+        // Стейкинг доход считается на полный срок пакета, но показывается за displayDays
         const apy = STAKING_APY;
         let totalDailyBini = 0;
-        let totalPeriodBini = 0;
-        let totalBonusBini = 0;
-        let totalSpotBini = 0;
-
         // Для split-bar берём средневзвешенный split
         let weightedBonus = 0;
         let weightedSpot = 0;
@@ -219,11 +269,7 @@
         stakes.forEach(s => {
             const pkg = PACKAGES[s.package];
             const daily = calcDailyReward(s.amount, apy);  // в BINI
-            const period = daily * pkg.lockDays;            // в BINI
             totalDailyBini += daily;
-            totalPeriodBini += period;
-            totalBonusBini += period * pkg.bonus;
-            totalSpotBini += period * pkg.spot;
             weightedBonus += pkg.bonus * s.amount;
             weightedSpot += pkg.spot * s.amount;
             totalStakeForWeight += s.amount;
@@ -232,26 +278,21 @@
         const avgBonus = totalStakeForWeight > 0 ? weightedBonus / totalStakeForWeight : 0.25;
         const avgSpot = totalStakeForWeight > 0 ? weightedSpot / totalStakeForWeight : 0.75;
 
-        // ВАЛИДАЦИЯ мин. стейка в USDT-эквиваленте
-        // Проверяем, что сумма × цена ≥ мин. порога пакета (10 USDT)
-        const minUsdt = 10;
-        let minStakeOk = true;
-        stakes.forEach(s => {
-            const stakeUsdt = s.amount * price;
-            if (stakeUsdt < minUsdt) minStakeOk = false;
-        });
+        // Доход за выбранный период
+        const periodRewardBini = totalDailyBini * displayDays;
+        const bonusPart = periodRewardBini * avgBonus;
+        const spotPart = periodRewardBini * avgSpot;
 
         out.apyEffective.textContent = formatApy(apy);
         out.apyBase.textContent = `фиксированный APY · ${rank.code}`;
-        // Основная сумма — BINI, USD-эквивалент — под ней
-        out.stakingPeriod.textContent = `${formatNumber(totalPeriodBini, 1)} BINI`;
-        out.stakingPeriodUsd.textContent = `≈ ${formatUsd(totalPeriodBini * price)}`;
+        out.stakingPeriod.textContent = `${formatNumber(periodRewardBini, 1)} BINI`;
+        out.stakingPeriodUsd.textContent = `≈ ${formatUsd(periodRewardBini * price)}`;
         out.stakingDaily.textContent = `${formatNumber(totalDailyBini, 2)} BINI`;
         out.stakingDailyUsd.textContent = `≈ ${formatUsd(totalDailyBini * price)} / день`;
-        out.splitBonus.textContent = `${formatNumber(totalBonusBini, 1)} BINI`;
-        out.splitSpot.textContent = `${formatNumber(totalSpotBini, 1)} BINI`;
+        out.splitBonus.textContent = `${formatNumber(bonusPart, 1)} BINI`;
+        out.splitSpot.textContent = `${formatNumber(spotPart, 1)} BINI`;
 
-        // Ширина сплит-бара — средневзвешенная
+        // Ширина сплит-бара
         document.querySelector('.split-bar__item--bonus').style.width = (avgBonus * 100) + '%';
         document.querySelector('.split-bar__item--spot').style.width = (avgSpot * 100) + '%';
         const bonusLabel = document.querySelector('.split-bar__item--bonus span');
@@ -259,25 +300,40 @@
         if (bonusLabel) bonusLabel.textContent = `Bonus ${(avgBonus * 100).toFixed(0)}%`;
         if (spotLabel) spotLabel.textContent = `Spot ${(avgSpot * 100).toFixed(0)}%`;
 
-        // === Рефералы — считаем в BINI ===
-        const tree = calcReferralTree(refCount, rank.depth);
-        const clientDailyBini = calcDailyReward(refStakeBini, apy);
-        // Период для расчёта реферальных берем максимальный — клиент стейкает на максимальный пакет
-        const refPeriodBini = clientDailyBini * maxLockDays;
-
+        // === Рефералы — считаем по каждому уровню L1-L8 ===
+        // Для каждого уровня: доход клиентов × ставка уровня
         let totalRefIncomeBini = 0;
-        const breakdown = tree.map((node, i) => {
-            const rate = rank.rates[i] || 0;
-            const perClient = refPeriodBini * rate;
-            const levelTotal = node.count * perClient;
+        const breakdown = [];
+
+        refLevels.forEach((r, i) => {
+            const level = r.level;
+            if (level > rank.depth) {
+                // Уровень недоступен для текущего ранга
+                breakdown.push({
+                    level: level,
+                    count: r.count,
+                    totalStakeBini: r.totalStakeBini,
+                    rate: 0,
+                    total: 0,
+                    available: false
+                });
+                return;
+            }
+            const rate = rank.rates[level - 1] || 0;
+            // Доход клиентов на этом уровне за выбранный период
+            const clientDailyBini = calcDailyReward(r.totalStakeBini, apy);
+            const clientPeriodBini = clientDailyBini * displayDays;
+            // Выплата партнёру: clientIncome × rate
+            const levelTotal = clientPeriodBini * rate;
             totalRefIncomeBini += levelTotal;
-            return {
-                level: node.level,
-                count: node.count,
+            breakdown.push({
+                level: level,
+                count: r.count,
+                totalStakeBini: r.totalStakeBini,
                 rate: rate,
-                perClient: perClient,
-                total: levelTotal
-            };
+                total: levelTotal,
+                available: true
+            });
         });
 
         out.refTotal.textContent = `${formatNumber(totalRefIncomeBini, 1)} BINI`;
@@ -287,25 +343,91 @@
         breakdown.forEach((lvl) => {
             const div = document.createElement('div');
             div.className = `ref-level ref-level--l${lvl.level}`;
+            if (!lvl.available) {
+                div.classList.add('ref-level--unavailable');
+            }
             const ratePct = (lvl.rate * 100).toFixed(lvl.rate * 100 % 1 === 0 ? 0 : 1);
             div.innerHTML = `
                 <span class="ref-level__label">L${lvl.level}</span>
-                <span class="ref-level__rate">${ratePct}% · линия ${lvl.level}</span>
-                <span class="ref-level__count">${formatNumber(lvl.count)} чел.</span>
+                <span class="ref-level__rate">${ratePct}% · ${lvl.count} чел. · ${formatNumber(lvl.totalStakeBini)} BINI${!lvl.available ? ' (не доступен на вашем ранге)' : ''}</span>
                 <span class="ref-level__value">${formatNumber(lvl.total, 1)} BINI</span>
             `;
             out.refLevels.appendChild(div);
         });
 
+        // === Лидерские пулы ===
+        // Командный объём = суммарный стейк всех рефералов в USDT
+        const teamVolumeUsd = refLevels.reduce((sum, r) => sum + r.totalStakeBini * price, 0);
+
+        // Оценка прибыли компании за период (30 дней = 1 месяц)
+        const monthsInPeriod = displayDays / 30;
+        const companyProfitPeriod = ESTIMATED_COMPANY_PROFIT_PER_MONTH_USD * monthsInPeriod;
+
+        // Определяем квалификацию по пулам
+        let poolsTotalUsd = 0;
+        const poolsBreakdown = [];
+
+        LEADER_POOLS.forEach(pool => {
+            if (teamVolumeUsd >= pool.minVolumeUsd) {
+                // Квалифицирован. Оценка бонуса = pool.share × companyProfit / N участников
+                // Допущение: 100 участников в каждом пуле (типичное значение для ранних пулов)
+                const estimatedParticipants = 100;
+                const poolBonusUsd = (pool.share * companyProfitPeriod) / estimatedParticipants;
+                poolsTotalUsd += poolBonusUsd;
+                poolsBreakdown.push({
+                    pool: pool.pool,
+                    share: pool.share,
+                    minVolumeUsd: pool.minVolumeUsd,
+                    qualified: true,
+                    bonusUsd: poolBonusUsd
+                });
+            } else {
+                poolsBreakdown.push({
+                    pool: pool.pool,
+                    share: pool.share,
+                    minVolumeUsd: pool.minVolumeUsd,
+                    qualified: false,
+                    bonusUsd: 0,
+                    neededUsd: pool.minVolumeUsd - teamVolumeUsd
+                });
+            }
+        });
+
+        out.poolsTotal.textContent = `${formatUsd(poolsTotalUsd)}`;
+        out.poolsTotalUsd.textContent = `≈ ${formatNumber(poolsTotalUsd / price, 1)} BINI`;
+
+        out.poolsList.innerHTML = '';
+        poolsBreakdown.forEach(p => {
+            const div = document.createElement('div');
+            div.className = `ref-level ${p.qualified ? 'ref-level--l1' : 'ref-level--unavailable'}`;
+            if (p.qualified) {
+                div.innerHTML = `
+                    <span class="ref-level__label">Пул ${p.pool}</span>
+                    <span class="ref-level__rate">${(p.share * 100).toFixed(0)}% · квалифицирован (объём ${formatUsd(teamVolumeUsd)})</span>
+                    <span class="ref-level__value">${formatUsd(p.bonusUsd)}</span>
+                `;
+            } else {
+                div.innerHTML = `
+                    <span class="ref-level__label">Пул ${p.pool}</span>
+                    <span class="ref-level__rate">${(p.share * 100).toFixed(0)}% · нужен объём от ${formatUsd(p.minVolumeUsd)}, не хватает ${formatUsd(p.neededUsd)}</span>
+                    <span class="ref-level__value">—</span>
+                `;
+            }
+            out.poolsList.appendChild(div);
+        });
+
         // === Итог ===
-        const grandTotalBini = totalPeriodBini + totalRefIncomeBini;
-        const grandUsd = grandTotalBini * price;
-        const roi = totalStakeBini > 0 ? (grandTotalBini / totalStakeBini * 100) : 0;
+        const stakingIncomeUsd = periodRewardBini * price;
+        const referralIncomeUsd = totalRefIncomeBini * price;
+        const grandTotalUsd = stakingIncomeUsd + referralIncomeUsd + poolsTotalUsd;
+        const grandTotalBini = grandTotalUsd / price;
+        const roi = totalStakeUsdt > 0 ? (grandTotalUsd / totalStakeUsdt * 100) : 0;
 
         out.grandTotal.textContent = `${formatNumber(grandTotalBini, 1)} BINI`;
-        out.grandTotalUsd.textContent = `≈ ${formatUsd(grandUsd)}`;
-        out.brStaking.textContent = `${formatNumber(totalPeriodBini, 1)} BINI`;
+        out.grandTotalUsd.textContent = `≈ ${formatUsd(grandTotalUsd)}`;
+        out.brStaking.textContent = `${formatNumber(periodRewardBini, 1)} BINI`;
         out.brReferral.textContent = `${formatNumber(totalRefIncomeBini, 1)} BINI`;
+        out.brPools.textContent = `${formatUsd(poolsTotalUsd)}`;
         out.brRoi.textContent = `ROI ${formatNumber(roi, 0)}%`;
 
         clearStale();
@@ -313,15 +435,24 @@
 
     // ====== СОБЫТИЯ ======
     btnAddStake.addEventListener('click', () => {
-        // Дефолт для нового стейка — в BINI (~$100 при цене $0.12)
         stakes.push({ amount: 830, package: 180 });
         renderStakes();
         markStale();
     });
 
+    btnAddRefLevel.addEventListener('click', () => {
+        const nextLevel = refLevels.length + 1;
+        if (nextLevel > 8) {
+            alert('Максимум 8 уровней рефералов (L1-L8)');
+            return;
+        }
+        refLevels.push({ level: nextLevel, count: 0, totalStakeBini: 0 });
+        renderRefLevelsInput();
+        markStale();
+    });
+
     btnRecalc.addEventListener('click', () => {
         render();
-        // Эффект "вращения" иконки
         const icon = btnRecalc.querySelector('.btn-recalc__icon');
         icon.style.transition = 'transform 0.5s';
         icon.style.transform = 'rotate(360deg)';
@@ -340,12 +471,22 @@
         });
     });
 
-    [biniPrice, referralCount, referralStake, rankSelect].forEach(input => {
+    periodBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            periodBtns.forEach(b => b.classList.remove('period-btn--active'));
+            btn.classList.add('period-btn--active');
+            currentDisplayPeriod = parseInt(btn.dataset.period);
+            render();
+        });
+    });
+
+    [biniPrice, rankSelect].forEach(input => {
         input.addEventListener('input', markStale);
         input.addEventListener('change', markStale);
     });
 
     // Стартовая отрисовка
     renderStakes();
+    renderRefLevelsInput();
     render();
 })();
